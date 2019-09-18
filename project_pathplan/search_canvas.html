@@ -83,8 +83,8 @@ function initSearch() {
 
     // specify default the world for the planner 
     //  (stored as "range" global variable with name "planning_scene")
-    //planning_scene = "empty";
-    planning_scene = "misc";
+    planning_scene = "empty";
+    // planning_scene = "misc";
     //planning_scene = "narrow1";
     //planning_scene = "narrow2";
     //planning_scene = "three_sections";
@@ -290,6 +290,63 @@ function iterateGraphSearch() {
     //   testCollision - returns whether a given configuration is in collision
     //   drawHighlightedPathGraph - draws a path back to the start location
     //   draw_2D_configuration - draws a square at a given location 
+    
+    console.log("interate!");
+    var c_node;
+    if (visit_queue.length != 0){
+
+        if(search_alg == "depth-first") c_node = visit_queue.pop();
+        else if(search_alg == "breadth-first") c_node = visit_queue.shift();
+        else c_node = minHeaper.extract(visit_queue);
+       
+        search_visited += 1;
+        c_node.visited = true;
+        c_node.queued = false;
+        draw_2D_configuration([c_node.x, c_node.y]);
+        
+        if(Math.abs(c_node.x - q_goal[0]) < eps/100 && Math.abs(c_node.y - q_goal[1]) < eps/100){
+        console.log("reach goal!");
+        drawHighlightedPathGraph(c_node);
+        search_iterate = false;
+        return "succeeded";
+        }   
+
+        var direction = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+        for(var i = 0; i < direction.length; ++i){
+            child = G[c_node.i + direction[i][0]][c_node.j + direction[i][1]];
+            
+
+            if(child.distance > eps + c_node.distance){
+                child.parent = c_node;
+                child.distance = eps + c_node.distance;
+                h_x = q_goal[0] - child.x;
+                h_y = q_goal[1] - child.y;
+                var h_score = Math.sqrt(h_x ** 2 + h_y ** 2);
+                if(search_alg == "greedy-best-first") child.priority = h_score;
+                else if(search_alg == "A-star") child.priority = c_node.distance + h_score;
+
+            } 
+
+            var collision =  testCollision([child.x, child.y]);
+
+            if(!collision && !child.visited && !child.queued){
+                child.queued = true;
+                if(search_alg == "depth-first" || search_alg == "breadth-first") visit_queue.push(child);
+                else minHeaper.insert(visit_queue, child);
+            }
+
+        }
+
+        return "iterating"
+            
+    }
+
+    else{
+        search_iterate = false;
+        return "failed"
+    } 
+
 }
 
 
@@ -411,6 +468,7 @@ function initSearchGraph() {
 
     // KE: visit queue not created for certain values of eps
     visit_queue = [];
+    console.log("init start!");
 
     // initialize search graph as 2D array over configuration space 
     //   of 2D locations with specified spatial resolution 
@@ -430,9 +488,21 @@ function initSearchGraph() {
 
             // STENCIL: determine whether this graph node should be the start
             //   point for the search
-                visit_queue = [];
+                // visit_queue = [];
+            if(Math.abs(xpos - q_init[0]) < eps/100 && Math.abs(ypos - q_init[1]) < eps/100){        
+                G[iind][jind].distance = 0;
+                G[iind][jind].visited = true;
+                G[iind][jind].queued = true;
+                sedis_x = q_goal[0] - q_init[0];
+                sedis_y = q_goal[1] - q_init[1];
+                sedis = Math.sqrt(sedis_x ** 2 + sedis_y ** 2);
+                G[iind][jind].priority = sedis;
+                visit_queue.push(G[iind][jind]);
+                console.log("start node: ", G[iind][jind].x, G[iind][jind].y);
+            }    
         }
     }
+    console.log("init end!");
 }
 
 function setPlanningScene() {
@@ -572,7 +642,64 @@ function insertTreeEdge(tree,q1_idx,q2_idx) {
     // STENCIL: implement min heap functions for graph search priority queue.
     //   These functions work use the 'priority' field for elements in graph.
 
+console.log("Heaaper create");
 
+minHeaper = {};
+
+function minheap_insert(heap, new_element) {
+  // STENCIL: implement your min binary heap insert operation
+  console.log("new_element priority: ", new_element.priority);
+  heap.push(new_element);
+  var now = heap.length - 1;
+  var parent = 0;
+  while(now > 0){
+    parent = Math.floor((now - 1) / 2)
+    if(heap[now].priority < heap[parent].priority){
+      var temp = heap[now];
+      heap[now] = heap[parent];
+      heap[parent] = temp; 
+      now = parent;
+    }
+    else break;
+  }
+}
+
+minHeaper.insert = minheap_insert;
+
+function minheap_extract(heap) {
+  // STENCIL: implement your min binary heap extract operation
+  var len = heap.length;
+  var a = heap[0];
+  heap[0] = heap[len - 1];
+  heap.pop();
+  len -= 1;
+  var now = 0;
+  while(now < heap.length){
+    var lchild = now * 2 + 1;
+    var rchild = now * 2 + 2;
+    var newidx;
+    if(rchild <= len - 1){     
+      if(heap[now].priority > heap[lchild].priority || 
+         heap[now].priority > heap[rchild].priority){
+        if(heap[lchild].priority < heap[rchild].priority) newidx = lchild; 
+        else newidx = rchild;
+      }
+      else break;
+    }
+    else if(lchild == len - 1){
+      if(heap[now].priority > heap[lchild].priority) newidx = lchild;
+      else break;
+    }
+    else break;
+    var temp = heap[newidx];
+    heap[newidx] = heap[now];
+    heap[now] = temp;
+    now = newidx;
+  }
+  return a
+}
+
+minHeaper.extract = minheap_extract;
 
 //////////////////////////////////////////////////
 /////     RRT IMPLEMENTATION FUNCTIONS
