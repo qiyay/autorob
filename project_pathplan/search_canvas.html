@@ -301,7 +301,7 @@ function iterateGraphSearch() {
        
         search_visited += 1;
         c_node.visited = true;
-        c_node.queued = false;
+ 
         draw_2D_configuration([c_node.x, c_node.y]);
         
         if(Math.abs(c_node.x - q_goal[0]) < eps/100 && Math.abs(c_node.y - q_goal[1]) < eps/100){
