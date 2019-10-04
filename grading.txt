@@ -2,7 +2,7 @@
 567 EECS F19
 
 Assignment 1 feature 1 (0.00/0): PathPlan_Honor: CHECK
-    comment: good work
+    comment: honor code sufficiently asserted via licence file
 Assignment 1 feature 2 (4.00/4): PathPlan_Heap: CHECK
     comment: good work
 Assignment 1 feature 3 (8.00/8): PathPlan_AStar: CHECK
