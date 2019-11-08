@@ -71,7 +71,7 @@ kineval.init = function init() {
 
     // initialize rosbridge connection to robot running ROS, if available
     // KE 2 : uncomment and add toggle 
-    //kineval.initrosbridge();
+    // kineval.initrosbridge();
 
     // call user's initialization
     my_init();

@@ -58,7 +58,7 @@ function matrix_transpose(m1) {
 
 function matrix_pseudoinverse(m1) {
     var m1_t = matrix_transpose(m1);
-    if (m1.length > m1[0].length){
+    if (m1.length >= m1[0].length){
         return matrix_multiply(numeric.inv(matrix_multiply(m1_t,m1)), m1_t);
     }
     else if (m1.length < m1[0].length){

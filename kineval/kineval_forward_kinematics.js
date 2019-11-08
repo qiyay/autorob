@@ -55,6 +55,12 @@ function traverseFKBase(){
     var trans = generate_translation_matrix(robot.origin.xyz[0], robot.origin.xyz[1], robot.origin.xyz[2]);
     robot.links[robot.base].xform = matrix_multiply(trans, rotate);
 
+
+    var l_heading = [[0], [0], [1], [1]];
+    var l_lateral = [[1], [0], [0], [1]];
+    robot_heading = matrix_multiply(robot.links[robot.base].xform,l_heading);
+    robot_lateral = matrix_multiply(robot.links[robot.base].xform,l_lateral);
+    
     if (robot.links_geom_imported) {
       var rosx = generate_rotation_matrix_X(-Math.PI/2);
       var rosy = generate_rotation_matrix_Y(-Math.PI/2);
@@ -62,10 +68,6 @@ function traverseFKBase(){
       robot.links[robot.base].xform = matrix_multiply(robot.links[robot.base].xform, ros_tran);
     }
 
-    var l_heading = [[0], [0], [1], [1]];
-    var l_lateral = [[1], [0], [0], [1]];
-    robot_heading = matrix_multiply(robot.links[robot.base].xform,l_heading);
-    robot_lateral = matrix_multiply(robot.links[robot.base].xform,l_lateral);
 }
 
 function traverseFKLink(link) {
