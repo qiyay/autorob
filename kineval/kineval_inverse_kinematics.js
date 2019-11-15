@@ -38,6 +38,22 @@ kineval.randomizeIKtrial = function randomIKtrial () {
     kineval.params.trial_ik_random.time = cur_time.getTime()-kineval.params.trial_ik_random.start.getTime();
 
     // STENCIL: see instructor for random time trial code
+  // get endeffector Cartesian position in the world
+    endeffector_world = matrix_multiply(robot.joints[robot.endeffector.frame].xform,robot.endeffector.position);
+  // compute distance of endeffector to target
+    kineval.params.trial_ik_random.distance_current = Math.sqrt(
+          Math.pow(kineval.params.ik_target.position[0][0]-endeffector_world[0][0],2.0)
+          + Math.pow(kineval.params.ik_target.position[1][0]-endeffector_world[1][0],2.0)
+          + Math.pow(kineval.params.ik_target.position[2][0]-endeffector_world[2][0],2.0) );
+  // if target reached, increment scoring and generate new target location
+  // KE 2 : convert hardcoded constants into proper parameters
+    if (kineval.params.trial_ik_random.distance_current < 0.01) {
+          kineval.params.ik_target.position[0][0] = 1.2*(Math.random()-0.5);
+          kineval.params.ik_target.position[1][0] = 1.2*(Math.random()-0.5)+1.5;
+          kineval.params.ik_target.position[2][0] = 0.7*(Math.random()-0.5)+0.5;
+          kineval.params.trial_ik_random.targets += 1;
+          textbar.innerHTML = "IK trial Random: target " + kineval.params.trial_ik_random.targets + " reached at time " + kineval.params.trial_ik_random.time;
+      }
 }
 
 kineval.iterateIK = function iterate_inverse_kinematics(endeffector_target_world, endeffector_joint, endeffector_position_local) {
@@ -45,18 +61,20 @@ kineval.iterateIK = function iterate_inverse_kinematics(endeffector_target_world
     // STENCIL: implement inverse kinematics iteration
     var world_endeffector_trans = robot.joints[endeffector_joint].xform;
     var endeffector_position_world = matrix_multiply(world_endeffector_trans, endeffector_position_local);
-    var world_r = Math.atan2(world_endeffector_trans[2][1], world_endeffector_trans[2][2]);
-    var world_p = Math.atan2(-world_endeffector_trans[2][0], Math.sqrt(world_endeffector_trans[2][1]**2 + world_endeffector_trans[2][2]**2));
-    var world_y = Math.atan2(world_endeffector_trans[1][0], world_endeffector_trans[0][0]);
+    var world_r = Math.atan2(-world_endeffector_trans[1][2], world_endeffector_trans[2][2]);
+    var world_p = Math.atan2(world_endeffector_trans[0][2], Math.sqrt(world_endeffector_trans[0][1]**2 + world_endeffector_trans[0][0]**2));
+    var world_y = Math.atan2(-world_endeffector_trans[0][1], world_endeffector_trans[0][0]);
     var endeffector_orientation_world = [world_r, world_p, world_y];
-    // console.log(world_r);
+    // console.log(endeffector_orientation_world,);
     var delta_x = [];
     for(var i = 0; i < 6; ++i){
         delta_x[i] = [];
         if(i < 3) delta_x[i][0] = endeffector_target_world.position[i] - endeffector_position_world[i][0];
         else{
             if(kineval.params.ik_orientation_included){
-                delta_x[i][0] = endeffector_target_world.orientation[i-3] - endeffector_orientation_world[i-3];
+                var tm = [endeffector_target_world.orientation[0],endeffector_target_world.orientation[1],endeffector_target_world.orientation[2]]
+                delta_x[i][0] = tm[i-3] - endeffector_orientation_world[i-3];
+                // console.log(endeffector_orientation_world,endeffector_target_world.orientation);
             }
             else delta_x[i][0] = 0;
         }
