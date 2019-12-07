@@ -76,18 +76,18 @@ function initSearch() {
     //search_alg = "depth-first";  
     //search_alg = "breadth-first";  
     //search_alg = "greedy-best-first";  
-    search_alg = "A-star";  
+    // search_alg = "A-star";  
     //search_alg = "RRT";  
-    //search_alg = "RRT-connect";  
+    search_alg = "RRT-connect";  
     //search_alg = "RRT-star";  
 
     // specify default the world for the planner 
     //  (stored as "range" global variable with name "planning_scene")
-    planning_scene = "empty";
+    // planning_scene = "empty";
     // planning_scene = "misc";
     //planning_scene = "narrow1";
     //planning_scene = "narrow2";
-    //planning_scene = "three_sections";
+    planning_scene = "three_sections";
 
     // specify default eps (epsilon) spatial resolution variable
     //   for RRT, specifies threshold radius for step size and reaching goal
@@ -368,6 +368,25 @@ function iterateRRT() {
     //   insertTreeVertex - adds and displays new configuration vertex for a tree
     //   insertTreeEdge - adds and displays new tree edge between configurations
     //   drawHighlightedPath - renders a highlighted path in a tree
+    // console.log("RRT")
+    search_visited += 1;
+    var q_rand = randomConfig();
+    var last = T_a.newest;
+    T_a = extendRRT(T_a, q_rand);
+    if(cdist(T_a.vertices[T_a.newest].vertex, q_goal) < eps/2){
+        search_iterate = false;
+        drawHighlightedPath(dfsPath(T_a));
+        return "succeeded";
+    }
+    else if(last == T_a.newest){
+        search_iterate = true;
+        return "failed";
+    }
+    else{
+      search_iterate = true;
+      return "extended";
+    }
+
 }
 
 function iterateRRTConnect() {
@@ -388,6 +407,33 @@ function iterateRRTConnect() {
     //   insertTreeVertex - adds and displays new configuration vertex for a tree
     //   insertTreeEdge - adds and displays new tree edge between configurations
     //   drawHighlightedPath - renders a highlighted path in a tree
+    search_visited += 1;
+    var q_rand = randomConfig();
+    var last = T_a.newest;
+    T_a = extendRRT(T_a, q_rand);
+    if(cdist(T_a.vertices[T_a.newest].vertex, q_goal) < eps/2){
+        search_iterate = false;
+        drawHighlightedPath(dfsPath(T_a));
+        return "succeeded";
+    }
+    else if(last == T_a.newest){
+        search_iterate = true;
+        return "failed";
+    }
+    else{
+        var q_new = T_a.vertices[T_a.newest].vertex;
+        if(connectRRT(q_new)){
+            search_iterate = false;
+            drawHighlightedPath(dfsPath(T_a));
+            drawHighlightedPath(dfsPath(T_b));
+            return "succeeded";
+        }
+        var tmp = T_a;
+        T_a = T_b;
+        T_b = tmp;
+        search_iterate = true;
+        return "extended";      
+    }
 }
 
 function iterateRRTStar() {
@@ -712,7 +758,81 @@ minHeaper.extract = minheap_extract;
     //   newConfig
     //   findNearestNeighbor
     //   dfsPath
+function cdist(q1,q2){
+    var dist = 0;
+    for(var i = 0; i < q1.length; ++i){
+        dist += (q1[i] - q2[i]) ** 2;
+    }
+    return Math.sqrt(dist);
+}
 
+function extendRRT(tree,q){
+    var nearidx = findNearestNeighbor(q,tree);
+    // console.log(nearidx)
+    var q_new = newConfig(q, tree.vertices[nearidx].vertex);
+    if(!testCollision(q_new)){
+        insertTreeVertex(tree, q_new);
+        insertTreeEdge(tree, nearidx, tree.newest);
+        tree.vertices[tree.newest].parent = tree.vertices[nearidx];
+      }
+    return tree;
+}
+
+function connectRRT(q){
+    while(cdist(T_b.vertices[T_b.newest].vertex, q) >= eps/2){
+        var last = T_b.newest;
+        T_b = extendRRT(T_b, q);
+        if(last == T_b.newest){
+          return false;
+        }
+    }
+    return true;
+}
+
+function randomConfig(){
+    if(Math.random() > 0.2){
+        var x_rand = -2 + Math.floor(Math.random()*G.length)*eps;
+        var y_rand = -2 + Math.floor(Math.random()*G[0].length)*eps;
+        return [x_rand, y_rand];
+    }
+    else{
+        return q_goal;
+    }
+}
+
+function newConfig(q_rand, q_near){
+    var dist = cdist(q_rand, q_near);
+    var prop = eps / dist;
+    var q_new = [];
+    for(var i = 0; i < q_rand.length; ++i){
+        q_new.push(q_near[i] + (q_rand[i] - q_near[i])*prop);
+    }
+    return q_new;
+
+}
+
+function findNearestNeighbor(q_rand,tree){
+    var idx = 0;
+    var mindis = cdist(tree.vertices[0].vertex,q_rand);
+    for(var i = 1;i <= tree.newest; ++i){
+        var d = cdist(tree.vertices[i].vertex, q_rand);
+        if(mindis > d){
+          mindis = d;
+          idx = i
+        }
+    }
+    return idx;
+}
+
+function dfsPath(tree){
+    var path = [tree.vertices[tree.newest]];
+    var curr = tree.vertices[tree.newest];
+    while(curr.parent != null){
+        path.push(curr.parent);
+        curr = curr.parent;
+    }
+    return path.reverse();
+}
 </script>
 
 
