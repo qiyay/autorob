@@ -79,7 +79,8 @@ function initSearch() {
     // search_alg = "A-star";  
     //search_alg = "RRT";  
     search_alg = "RRT-connect";  
-    //search_alg = "RRT-star";  
+    // search_alg = "RRT-star";  
+    // search_alg = "PRM"
 
     // specify default the world for the planner 
     //  (stored as "range" global variable with name "planning_scene")
@@ -146,6 +147,8 @@ function initSearch() {
 
     // initialize graph search algorithms (DFS, BFS, A-star) 
     initSearchGraph();
+
+    if(search_alg == "PRM") initPRM();
 
     // flag to continue or stop search iterations
     search_iterate = true;
@@ -241,6 +244,9 @@ function animate() {
                 break;
             case "RRT-star": 
                 search_result = iterateRRTStar();
+                break;
+            case "PRM":
+                search_result = iteratePRM();
                 break;
             default: 
                 console.warn('search_canvas: search algorithm not found, using rrt as default');
@@ -437,9 +443,117 @@ function iterateRRTConnect() {
 }
 
 function iterateRRTStar() {
+    search_visited += 1;
+    var q_rand = randomConfig();
+    var nearest = findNearestNeighbor(q_rand, T_a);
+    var q_new = newConfig(q_rand, T_a.vertices[nearest].vertex);
+    var last = T_a.newest;
+    if(!testCollision(q_new)){
+        var near = Near(q_new, 1.2*eps);
+        var q_min_idx = choose_parent(near, nearest, q_new);
+        rewire(near, q_min_idx);
+    }
+    if(cdist(T_a.vertices[T_a.newest].vertex, q_goal) < eps/2){
+        search_iterate = false;
+        drawHighlightedPath(dfsPath(T_a));
+        return "succeeded";
+    }
+    else if(last == T_a.newest){
+        search_iterate = true;
+        return "failed";
+    }
+    else{
+      search_iterate = true;
+      return "extended";
+    }
 
 }
 
+function initPRM() {
+
+    // create tree object
+    map = {};
+    map.vertices = [];
+    map.newest = 0;
+    for(var i = 0;i<=500;i++){
+        var q_new = randomConfig2();
+        if(!testCollision(q_new)&&q_new[0]>-1.8&&q_new[0]<5.8&&q_new[1]>-1.8&&q_new[1]<5.8) insertTreeVertex2(map,q_new)
+    }
+    for(var i = 0;i<=map.newest;i++){
+        var near = Near2(i,2)
+        map.vertices[i].near = near;
+        // console.log(near.length)
+        for(var j=0;j<near.length;j++) {
+            // insertTreeEdge(map,i,near[j])
+            draw_2D_edge_configurations2(map.vertices[i].vertex, map.vertices[near[j]].vertex)
+        }
+    }
+    nearestinit = findNearestNeighbor2(q_init,map)
+    // console.log(nearestinit)
+    nearestgoal = findNearestNeighbor2(q_goal,map)
+    insertTreeVertex2(map,q_init)
+    insertTreeVertex2(map,q_goal)
+
+    draw_2D_edge_configurations2(map.vertices[nearestinit].vertex, q_init)
+    draw_2D_edge_configurations2(map.vertices[nearestgoal].vertex, q_goal)
+
+    map_visit = [nearestinit]
+    map.vertices[nearestinit].distance = 0;
+    map.vertices[nearestinit].parent = map.newest-1;
+    console.log()
+
+}
+
+function iteratePRM() {
+    search_visited += 1;
+
+    var c_idx;
+
+    if (map_visit.length != 0){
+        c_idx = map_visit.shift();
+        map.vertices[c_idx].visited = true;
+ 
+        draw_2D_configuration([map.vertices[c_idx].vertex[0], map.vertices[c_idx].vertex[1]]);
+      
+        if(c_idx == nearestgoal){
+            map.vertices[map.newest].parent = c_idx;
+            console.log("reach goal!");
+            // console.log(dfsPath2(map).length)
+            drawHighlightedPath(dfsPath2(map))
+            // drawHighlightedPathGraph2(nearestgoal);
+            search_iterate = false;
+            return "succeeded";
+        }   
+
+        // if(map.vertices[c_idx].near.length == 0) {
+        //     search_iterate = false; 
+        //     return "failed";
+        // }
+
+        for(var i=0;i<map.vertices[c_idx].near.length;i++){
+            if(map.vertices[map.vertices[c_idx].near[i]].distance>map.vertices[c_idx].distance+cdist(map.vertices[c_idx].vertex,map.vertices[map.vertices[c_idx].near[i]].vertex)){
+                map.vertices[map.vertices[c_idx].near[i]].parent = c_idx;
+                map.vertices[map.vertices[c_idx].near[i]].distance = map.vertices[c_idx].distance+cdist(map.vertices[c_idx].vertex,map.vertices[map.vertices[c_idx].near[i]].vertex);
+            }
+            if(!map.vertices[map.vertices[c_idx].near[i]].visited&&!map.vertices[map.vertices[c_idx].near[i]].queued) {
+                map.vertices[map.vertices[c_idx].near[i]].queued = true
+                map_visit.push(map.vertices[c_idx].near[i]);
+            }
+        }
+        return "iterating"
+    }
+
+    else{
+        initPRM();
+        return "Regenerate"
+        // search_iterate = false;
+        // return "failed"
+    }
+
+    // for
+    // var q_new = randomConfig();
+
+}
 //////////////////////////////////////////////////
 /////     STENCIL SUPPORT FUNCTIONS
 //////////////////////////////////////////////////
@@ -642,6 +756,8 @@ function insertTreeVertex(tree,q) {
     new_vertex = {};
     new_vertex.edges = [];
     new_vertex.vertex = q;
+    new_vertex.distance = 10000;
+    new_vertex.visited = false;
     tree.vertices.push(new_vertex);
 
     // maintain index of newest vertex added to tree
@@ -790,14 +906,21 @@ function connectRRT(q){
 }
 
 function randomConfig(){
-    if(Math.random() > 0.2){
-        var x_rand = -2 + Math.floor(Math.random()*G.length)*eps;
-        var y_rand = -2 + Math.floor(Math.random()*G[0].length)*eps;
-        return [x_rand, y_rand];
+    var x_rand = -2 + Math.floor(Math.random()*G.length)*eps;
+    var y_rand = -2 + Math.floor(Math.random()*G[0].length)*eps;
+    var q_rand = [x_rand, y_rand];
+
+    if (search_alg !="RRT-Connect"){ 
+        var num_rand = Math.random();
+        if (num_rand > 0.5){
+            return q_rand;
+        }
+        else{
+            return q_goal;
+        }
     }
-    else{
-        return q_goal;
-    }
+
+    return q_rand;
 }
 
 function newConfig(q_rand, q_near){
@@ -832,6 +955,192 @@ function dfsPath(tree){
         curr = curr.parent;
     }
     return path.reverse();
+}
+
+function Near(q_new, rad){
+    var near = [];
+    for(var i = 0; i <= T_a.newest; ++i){
+        var dist = cdist(T_a.vertices[i].vertex, q_new);
+        if(dist < rad){
+            near.push(i);
+        }
+    }
+    return near;
+}
+
+function choose_parent(near, nearest, q_new){
+    var q_min_idx = nearest;
+    var min_cost = T_a.vertices[nearest].cost + eps;
+    for(var i = 0; i < near.length; ++i){
+        if(near[i] != nearest){
+            var node = T_a.vertices[near[i]];
+            var cost = node.cost + cdist(node.vertex, q_new);
+            // console.log(near.length, cost)
+            if(cost < min_cost){
+                q_min_idx = near[i];
+                min_cost = cost;
+            }
+        }
+    }
+    insertTreeVertex(T_a, q_new);
+    insertTreeEdge(T_a, q_min_idx, T_a.newest);
+    T_a.vertices[T_a.newest].cost = min_cost;
+    T_a.vertices[T_a.newest].parent = T_a.vertices[q_min_idx];
+    return q_min_idx;
+}
+
+function rewire(near, q_min_idx){
+    for(var i = 0; i < near.length; ++i){
+        if(near[i] != q_min_idx){
+
+        var node = T_a.vertices[near[i]];
+        var cost = T_a.vertices[T_a.newest].cost + cdist(node.vertex, T_a.vertices[T_a.newest].vertex);
+        if(cost < node.cost){
+            console.log("a")
+            T_a.vertices[near[i]].parent = T_a.vertices[T_a.newest];
+            T_a.vertices[near[i]].cost = cost;
+            }
+        }
+    }
+}
+
+function Near2(idx, rad){
+    var near = [];
+    for(var i = 0; i <= map.newest; ++i){
+        var dist = cdist(map.vertices[i].vertex, map.vertices[idx].vertex);
+        // console.log(dist)
+        if(dist < rad && i!=idx && !intersect(map.vertices[i].vertex,map.vertices[idx].vertex)){
+            near.push(i);
+        }
+    }
+    return near;
+}
+
+function drawHighlightedPathGraph2(current_node) {
+
+    // traverse path back to start and draw path
+    ctx.strokeStyle="#0000FF";
+    ctx.lineWidth=4;
+    ctx.beginPath();
+    path_length = 0; 
+    q_path_ref = map.vertices[current_node]; 
+    while (q_path_ref.distance > 0) {
+        // KE: find cleaner way to draw edges
+        //draw_2D_edge_configurations([q_path_ref.x,q_path_ref.y],[q_path_ref.parent.x,q_path_ref.parent.y]);
+        var px = map.vertices[q_path_ref.parent].vertex[0]
+        var py = map.vertices[q_path_ref.parent].vertex[1]
+        ctx.moveTo(xformWorldViewX(q_path_ref.vertex[0]),xformWorldViewY(q_path_ref.vertex[1]));
+        ctx.lineTo(xformWorldViewX(px),xformWorldViewY(py));
+        path_length += Math.sqrt(Math.pow(q_path_ref.vertex[0]-px,2)+Math.pow(q_path_ref.vertex[1]-py,2));
+        q_path_ref = map.vertices[q_path_ref.parent];
+    }
+    ctx.closePath();
+    ctx.stroke();
+}
+
+function dfsPath2(tree){
+    var path = [tree.vertices[map.newest]];
+    var curr = tree.vertices[map.newest];
+    while(curr.parent != map.newest-1){
+        // console.log(tree.vertices[curr.parent].vertex)
+        path.push(tree.vertices[curr.parent]);
+        curr = tree.vertices[curr.parent];
+    }
+    path.push(tree.vertices[map.newest-1])
+    return path.reverse();
+}
+
+function insertTreeVertex2(tree,q) {
+
+    // create new vertex object for tree with given configuration and no edges
+    new_vertex = {};
+    new_vertex.edges = [];
+    new_vertex.vertex = q;
+    new_vertex.distance = 10000;
+    new_vertex.visited = false;
+    new_vertex.queued = false;
+    tree.vertices.push(new_vertex);
+
+    // maintain index of newest vertex added to tree
+    tree.newest = tree.vertices.length - 1;
+
+    // draw location on canvas
+    // draw_2D_configuration(q);
+}
+
+function intersect(q1,q2){
+    var x1 = q1[0]
+    var x2 = q2[0]
+    var y1 = q1[1]
+    var y2 = q2[1]
+    for (var i=0;i<range.length;i++){
+        // if(y1>range[i][1][0]&&y1<range[i][1][1]&&y2>range[i][1][0]&&y2<range[i][1][1]&&(x1-range[i][0][0])*(x2-range[i][0][0])<0) 
+        //     return true
+        // if(x1>range[i][0][0]&&x1<range[i][0][1]&&x2>range[i][0][0]&&x2<range[i][0][1]&&(y1-range[i][1][0])*(y2-range[i][1][0])<0) 
+        //     return true
+        if(x1!=x2 && y1!=y2){
+            for (var j=0;j<2;j++){
+                if((y1-range[i][1][j])*(y2-range[i][1][j])<0) {
+                    var t =(range[i][1][j]-y1)/(y2-y1)      
+                    if((x1+t*(x2-x1)>range[i][0][0])&&(x1+t*(x2-x1)<range[i][0][1])) return true
+                }
+            }
+            for (var j=0;j<2;j++){
+                if((x1-range[i][0][j])*(x2-range[i][0][j])<0) {
+                    var t =(range[i][0][j]-x1)/(x2-x1)      
+                    if((y1+t*(y2-y1)>range[i][1][0])&&(y1+t*(y2-y1)<range[i][1][1])) return true
+                }
+            }
+        }
+        if(y1==y2){
+            for (var j=0;j<2;j++){
+                if((x1-range[i][0][j])*(x2-range[i][0][j])<0) return true
+            }
+        }
+        if(x1==x2){
+            for (var j=0;j<2;j++){
+                if((y1-range[i][1][j])*(y2-range[i][1][j])<0) return true
+            }
+        }
+
+
+
+    }
+    return false
+}
+
+function randomConfig2(){
+
+    // var x_rand = -2 + Math.floor(Math.random()*G.length)*eps;
+    // var y_rand = -2 + Math.floor(Math.random()*G[0].length)*eps;
+    var x_rand = -2 + Math.random()*8;
+    var y_rand = -2 + Math.random()*8;
+    return [x_rand, y_rand];
+
+}
+
+function draw_2D_edge_configurations2(q1,q2) {
+    // draw line between locations of two 2D configurations on canvas
+    c = document.getElementById("myCanvas");
+    ctx = c.getContext("2d");
+    ctx.beginPath();
+    ctx.strokeStyle="#00dddd";
+    ctx.moveTo(xformWorldViewX(q1[0]),xformWorldViewY(q1[1]));
+    ctx.lineTo(xformWorldViewX(q2[0]),xformWorldViewY(q2[1]));
+    ctx.stroke();
+}
+
+function findNearestNeighbor2(q_rand,tree){
+    var idx = 0;
+    var mindis = cdist(tree.vertices[0].vertex,q_rand);
+    for(var i = 1;i <= tree.newest; ++i){
+        var d = cdist(tree.vertices[i].vertex, q_rand);
+        if(mindis > d && !intersect(map.vertices[i].vertex,q_rand)){
+          mindis = d;
+          idx = i
+        }
+    }
+    return idx;
 }
 </script>
 

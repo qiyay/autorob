@@ -1,0 +1,10 @@
+Assignment 1: Path Planning probabilistic roadmap ("PRM")(1pt)
+Note: PRM can be applyed by set "?search_alg=PRM" 
+PRM's Path between roadmap entry nodes is searched by Breadth-first search algorithm.
+
+Assignment 5: Inverse Kinematics "IK100in60" (1pt)
+
+Assignment 3: Forward Kinematics Denavit-Hartenberg table for the kinematics of the Fetch robot(2pts)
+
+PS:For Assignment 2 graduate sections, to receive credit for the double pendulum, I choose option "provide a document in LaTeX that derives the double pendulum EOMs." 
+rather than finish other extention part.

@@ -118,6 +118,7 @@ kineval.robotRRTPlannerInit = function robot_rrt_planner_init() {
     var i; 
     q_goal_config = new Array(q_start_config.length);
     for (i=0;i<q_goal_config.length;i++) q_goal_config[i] = 0;
+    if(robot.origin.xyz[1]>0.5) q_goal_config[1] = robot.origin.xyz[1];
     // flag to continue rrt iterations
     rrt_iterate = true;
     rrt_iter_count = 0;
@@ -154,14 +155,12 @@ function robot_rrt_planner_iterate() {
     //   tree_add_vertex - adds and displays new configuration vertex for a tree
     //   tree_add_edge - adds and displays new tree edge between configurations
         var q_rand = random_config();
-        bar = 0.7 * eps
-        if(robot.origin.xyz[1]>0.5) bar = eps;
         
-
         if(rrt_alg == 0){
             T_a = rrt_extend(T_a, q_rand);
-            if(cdist(T_a.vertices[T_a.newest].vertex, q_goal_config) < bar){
+            if(cdist(T_a.vertices[T_a.newest].vertex, q_goal_config) < 0.7 * eps){
                 kineval.motion_plan = path_dfs(T_a);
+                kineval.motion_plan_traversal_index = 0;
                 return "reached";
             }
             else return "not reach";
@@ -179,21 +178,13 @@ function robot_rrt_planner_iterate() {
                 for(var i = 0; i < 2; ++i){
                     var path_idx = Tree[i].newest;
                     while(path_idx != null){
-                        if(path_idx == 0 && i == 0){
-                            start = 1;
-                        }
                         path[i].push(Tree[i].vertices[path_idx]);
                         Tree[i].vertices[path_idx].geom.material.color = {r:1,g:0,b:0};
                         path_idx = Tree[i].vertices[path_idx].parent;
                   }
-                }
-
-                if(start == 1){
-                  kineval.motion_plan = (path[0].reverse()).concat(path[1]);
-                }
-                else{
-                  kineval.motion_plan = (path[1].reverse()).concat(path[0]);
-                }
+                }                
+                kineval.motion_plan = (path[1].reverse()).concat(path[0]);
+                kineval.motion_plan_traversal_index = 0;
                 return "reached";
             }
             var tmp = T_a;
@@ -208,13 +199,14 @@ function robot_rrt_planner_iterate() {
             var q_new = new_config(q_rand, T_a.vertices[nearest].vertex);
             // console.log((T_a.vertices).length,1)
             if(!kineval.poseIsCollision(q_new)){
-                var near = Near(q_new, 2*eps);
+                var near = Near(q_new, 1.2*eps);
                 var q_min_idx = choose_parent(near, nearest, q_new);
                 rewire(near, q_min_idx);
             }
 
-            if(cdist(T_a.vertices[T_a.newest].vertex, q_goal_config) < bar){
+            if(cdist(T_a.vertices[T_a.newest].vertex, q_goal_config) < eps*0.7){
                 kineval.motion_plan = path_dfs(T_a);
+                kineval.motion_plan_traversal_index = 0;
                 return "reached";
             }
             else return "not reach";
@@ -333,9 +325,13 @@ function rrt_connect(q_new){
 
 function cdist(q1, q2){
     var dist = (q1[0]-q2[0])**2+(q1[2]-q2[2])**2+0.02*((q1[4]-q2[4])**2);
-    for(var i = 0; i <= q1.length - 1; ++i){
-        if(i > 5) dist += 0.005 * (q1[i] - q2[i])**2;
-    }
+    // for(var i = 0; i <= q1.length - 1; ++i){
+    //     if(i > 5) dist += 0.001 * (q1[i] - q2[i])**2;
+    //     else dist += (q1[i] - q2[i])**2;
+    // }
+    // for(var i = 0; i <= q1.length - 1; ++i){
+    //     if(i > 5) dist += 0.005 * (q1[i] - q2[i])**2;
+    // }
     return Math.sqrt(dist);
 }
 
@@ -355,14 +351,8 @@ function random_config(){
     var q_rand = [x_rand,robot.origin.xyz[1],z_rand,0,angle_rand,0];
 
     for (joint in robot.joints){
-        if (robot.joints[joint].limit === undefined){
-            q_rand.push(angle_min + Math.floor(ang_eps * Math.random()) * eps);
-        }else if (robot.joints[x].limit !== undefined){
-            q_rand.push(robot.joints[x].limit.lower+Math.floor(Math.random()*(robot.joints[x].limit.upper-robot.joints[x].limit.lower)/eps)*eps);
-        }
-        if (robot.joints[x].type === "fixed"){
-            q_rand.push(0);
-        }
+        angle_rand = angle_min + Math.floor(ang_eps * Math.random()) * eps;
+        q_rand.push(angle_rand);
     }
 
     if (rrt_alg != 1){ 
@@ -397,7 +387,7 @@ function new_config(q_rand,q_nearest){
         }
         else if(type == fixed) q_new[q_names[x]] = 0;
     }
-    q_new[1] = robot.origin.xyz[1];
+    q_new[1] = robot.origin.xyz[1];;
     q_new[3] = 0;
     q_new[5] = 0;
     return q_new;
@@ -444,7 +434,7 @@ function choose_parent(near, nearest, q_new){
     var min_cost = T_a.vertices[nearest].cost + eps;
     for(var i = 0; i < near.length; ++i){
         if(near[i] != nearest){
-            node = T_a.vertices[near[i]];
+            var node = T_a.vertices[near[i]];
             var cost = node.cost + cdist(node.vertex, q_new);
             // console.log(near.length, cost)
             if(cost < min_cost){
@@ -463,7 +453,7 @@ function rewire(near, q_min_idx){
     for(var i = 0; i < near.length; ++i){
         if(near[i] != q_min_idx){
 
-            node = T_a.vertices[near[i]];
+            var node = T_a.vertices[near[i]];
             var cost = T_a.vertices[T_a.newest].cost + cdist(node.vertex, T_a.vertices[T_a.newest].vertex);
             if(cost < node.cost){
                 T_a.vertices[near[i]].parent = T_a.newest;

@@ -1,0 +1,25 @@
+Link name			theta			d		        a		alpha 
+base_link			0			0		        0		0
+torse_lift_link			torso_lift_joint(P)	torse_lift+0.37743	0.086875	0
+shoulder_plan_link		shoulder_pan_joint	0.34858 	        0.119525	0
+shoulder_lift_link		shoulder_lift_joint	0.05999	        	0.117		0
+upperarm_roll_link		upperarm_roll_joint	0        		0.219		0
+elbow_flex_link			elbow_flex_joint	0	        	0.133		0
+forearm_roll_link		forearm_roll_joint	0		        0.197		0
+wrist_flex_link			wrist_flex_joint	0        		0.1245		0
+wrist_roll_link			wrist_roll_joint	0	        	0.1385		0
+gripper_link			gripper_axis(F)		0		        0.16645		0
+head_pan_link			head_pan_joint		0.60300		        0.053125	0
+head_tilt_link			head_tilt_joint		0.05799 	        0.14253		0
+bellows_link			bellows_joint (P)	0			0		0
+bellows_link2			bellows_joint2 (F)	0			0		0
+laser_link			laser_joint (F)		0.2878			0.235		180deg
+torso_fixed_link		torso_fixed_joint(F)	0.3774			0.086875	0
+
+Theta:rotation angle from Xi-1 to Xi about Zi-1
+d:distance from origin of (i-1) coordinate to intersection of Zi-1&Xi along Zi-1
+a:distance from intersection of Zi-1&Xi to origin of i coordinate along Xi
+alpha:rotation angle from Zi-1 to Zi about Xi
+
+The parameter in theta means that, the current theta is depended by how the joint rotate, if the joint can rotate along X axis,it has a value. (F) stand for fixed,(P) for prismatic, which cannot rotate.
+In initial state, all thetas are zero. 
