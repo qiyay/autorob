@@ -65,18 +65,18 @@ Assignment 6 feature 30 (2.00/2): MotionPlan_2DRRTConnect: CHECK
     
 Assignment 6 feature 31 (6.00/6): MotionPlan_CSpaceRRTConnect: CHECK
     
-Assignment 6 feature 32 (0.00/6): MotionPlan_RRTStar: PENDING
-    
+Assignment 6 feature 32 (0.00/6): MotionPlan_RRTStar: DUE
+    error: planner not implemented
 Assignment 7 feature 33 (12.00/12): Pitch: CHECK
     
 Assignment 7 feature 34 (6.00/6): Pitch_Advanced: CHECK
     
-Assignment 8 feature 35 (0.00/4): Advanced: PENDING
-    PathPlan_PRM: PENDING
+Assignment 8 feature 35 (8.00/4): Advanced: PERCENT 200
+    PathPlan_PRM: CHECK
     Pendularm_DoublePendulumEOM: CHECK
     comment: thank you for offering the point of correction in the stencil EOMs
-    FK_FetchDH: PENDING
-    IK_100in60: PENDING
+    FK_FetchDH: ALLOWED
+    IK_100in60: CHECK
 Quiz 1: 3.50 of 4
 Quiz 2: 4.00 of 4
 Quiz 3: 3.67 of 4
