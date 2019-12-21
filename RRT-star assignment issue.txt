@@ -1,0 +1,2 @@
+I already implemented RRT star but the assignment didn’t receive credit as the comment said it was not implemented. 
+In my kineval_rrt_connect.js, the rrt_alg need to be change to 2 to implement it.

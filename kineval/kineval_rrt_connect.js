@@ -136,7 +136,7 @@ kineval.robotRRTPlannerInit = function robot_rrt_planner_init() {
 function robot_rrt_planner_iterate() {
 
     var i;
-    rrt_alg = 1;  // 0: basic rrt (OPTIONAL), 1: rrt_connect (REQUIRED)
+    rrt_alg = 2;  // 0: basic rrt (OPTIONAL), 1: rrt_connect (REQUIRED)
 
     if (rrt_iterate && (Date.now()-cur_time > 10)) {
         cur_time = Date.now();
